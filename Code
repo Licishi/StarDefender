@@ -1,0 +1,408 @@
+#include <stdlib.h> 
+#include <conio.h>
+#include <stdio.h>
+#include <windows.h> 
+#include <list>
+#include <thread>
+#include <clocale>
+#include <iostream>
+#include <fstream>
+#include <string>
+#include <vector>
+#include <algorithm>
+
+#pragma warning(disable : 4996)
+using namespace std;
+#define UP    72 
+#define LEFT  75
+#define RIGHT 77
+#define DOWN  80
+
+
+void addPlayer(ofstream& file, const Player& player) {
+    file << player.name << " " << player.score << endl;
+}
+void incrementValue(int& value,bool& flag) {
+    while (flag) {
+        ++value;
+        this_thread::sleep_for(chrono::seconds(1));
+    }
+}  
+void gotoxy(int x, int y)
+{ 
+    HANDLE hCon = GetStdHandle(STD_OUTPUT_HANDLE);
+    COORD dwPos;
+    dwPos.X = x; 
+    dwPos.Y = y; 
+    SetConsoleCursorPosition(hCon, dwPos);
+}
+void HideCursor()
+{ 
+    HANDLE hCon = GetStdHandle(STD_OUTPUT_HANDLE);
+    CONSOLE_CURSOR_INFO cci;
+    cci.dwSize = 1;
+    cci.bVisible = FALSE;
+    SetConsoleCursorInfo(hCon, &cci);
+}
+void TRHideCursor()
+{
+    HANDLE hCon = GetStdHandle(STD_OUTPUT_HANDLE);
+    CONSOLE_CURSOR_INFO cci;
+    cci.dwSize = 1;
+    cci.bVisible = TRUE;
+    SetConsoleCursorInfo(hCon, &cci);
+}
+void DrawWhiteSpace(int a_x, int a_y, int b_x, int b_y)
+{ 
+    for (int i = a_x; i < b_x; i++)
+    {
+        for (int j = a_y; j < b_y; j++)
+        {
+            gotoxy(i, j); printf(" ");
+        }
+    }
+}
+void DrawWindowFrame(int a_x, int a_y, int b_x, int b_y)
+{ 
+    DrawWhiteSpace(a_x, a_y, b_x, b_y);
+    for (int i = a_x; i < b_x; i++)
+    {
+        gotoxy(i, a_y); printf("%c", 205);
+        gotoxy(i, b_y); printf("%c", 205);
+    }
+    for (int i = a_y; i < b_y; i++)
+    {
+        gotoxy(a_x, i); printf("%c", 186);
+        gotoxy(b_x, i); printf("%c", 186);
+    }
+    gotoxy(a_x, a_y); printf("%c", 201);
+    gotoxy(b_x, a_y); printf("%c", 187);
+    gotoxy(a_x, b_y); printf("%c", 200);
+    gotoxy(b_x, b_y); printf("%c", 188);
+}
+void DrawGameLimits()
+{ 
+    DrawWindowFrame(1, 2, 79, 23); 
+    gotoxy(2, 1); printf("HP:");
+    gotoxy(16, 1); printf("SHIELD:");
+    gotoxy(50, 1); printf("SCORE:");
+}
+void WelcomeMessage()
+{ 
+    int x = 13;
+    int y = 6;
+    gotoxy(x, y); printf("  _____ _______       _____       _____  ______ ______ ______ _   _ _____  ______ _____  ");
+    gotoxy(x, y + 1); printf(" / ____|__   __|/\\   |  __ \\     |  __ \\|  ____|  ____|  ____| \\ | |  __ \\|  ____|  __ \\ ");
+    gotoxy(x, y + 2); printf("| (___    | |  /  \\  | |__) |    | |  | | |__  | |__  | |__  |  \\| | |  | | |__  | |__) |");
+    gotoxy(x, y + 3); printf(" \\___ \\   | | / /\\ \\ |  _  /     | |  | |  __| |  __| |  __| | . ` | |  | |  __| |  _  / ");
+    gotoxy(x, y + 4); printf(" ____) |  | |/ ____ \\| | \\ \\     | |__| | |____| |    | |____| |\\  | |__| | |____| | \\ \\ ");
+    gotoxy(x, y + 5); printf("|_____/   |_/_/    \\_\\_|  \\_\\    |_____/|______|_|    |______|_| \\_|_____/|______|_|  \\_\\ ");
+    gotoxy(x, y + 8); printf("                             Press any key to read the rules");
+    gotoxy(x, y + 18); printf("                                    Create by froxia");
+    getch(); system("cls");
+
+    gotoxy(x+20, y-2 ); printf("This is rules and instruction for the game");
+    gotoxy(x, y + 3); printf("To move up, press ^ ");        gotoxy(x, y + 5); printf("To move rignt, press >");
+    gotoxy(x, y + 7); printf("To move down, press v ");        gotoxy(x, y + 9); printf("To move left, press < ");
+    gotoxy(x+40, y + 3); printf("You need to avoid shooting stars");        gotoxy(x + 40, y + 5); printf("Be careful, only three lives (one life = three shields)");
+    gotoxy(x + 40, y + 7); printf("Don't judge strictly, this is my first game");        gotoxy(x + 40, y + 9); printf("If you survive the star stream, then you've won");
+    gotoxy(x + 28, y+14); printf("Press any key to play");  
+}
+void GameOverDefeatMessage(int score)
+{ 
+    int a_x = 29;
+    int a_y = 10;
+    int b_x = a_x + 22;
+    int b_y = a_y + 3;
+    DrawWindowFrame(a_x, a_y, b_x, b_y);
+    gotoxy(a_x + 1, a_y + 1); printf("   YOU ARE LOST !!!");
+    gotoxy(a_x + 4, a_y + 2); printf("Your score: %d", score);
+    
+}
+void GameOverVictoryMessage(int score )
+{ 
+    int a_x = 29;
+    int a_y = 10;
+    int b_x = a_x + 22;
+    int b_y = a_y + 3;
+    DrawWindowFrame(a_x, a_y, b_x, b_y);
+    gotoxy(a_x + 1, a_y + 1); printf("    WIN WIN WIN");
+    gotoxy(a_x + 4, a_y + 2); printf("Your score: %d", score);
+}
+void SpecialMessage()
+{
+    DrawWhiteSpace(1, 1, 80, 24);
+    gotoxy(30, 11); printf("Thanks for playing ");
+    gotoxy(30, 12); printf("If you want to know the history of our game,"); 
+    gotoxy(30, 13); printf("write to the distributor Froxia");
+    gotoxy(30, 15); printf("If you have any suggestions for improvement, write to him too");
+}
+
+class SpaceShip
+{
+private:
+    int x; 
+    int y; 
+    int hp; 
+    int shield; 
+    bool imDead; 
+public:
+    int X() { return x; }
+    int Y() { return y; }
+    int HP() { return hp; }
+    int Shield() { return shield; }
+
+    bool isDead()
+    {
+        DrawSpaceShipInfo(); 
+        return imDead;
+    }
+    SpaceShip(int _x, int _y)
+    {
+        x = _x;
+        y = _y;
+        hp = 3; 
+        shield = 3; 
+        imDead = false; 
+    }
+    void DrawSpaceShipInfo()
+    { 
+        gotoxy(5, 1); printf("     ");
+        for (int i = 0; i < hp; i++)
+        {
+            gotoxy(5 + i, 1); printf("%c", 3);
+        }
+        gotoxy(23, 1); printf("     ");
+        for (int i = 0; i < shield; i++)
+        {
+            gotoxy(23 + i, 1); printf("%c", 222);
+        }
+    }
+    void Draw()
+    { 
+        gotoxy(x, y);     printf("  %c  ", 30);
+        gotoxy(x, y + 1); printf("  %c  ", 4);
+        gotoxy(x, y + 2); printf("%c%c%c%c%c", 17, 30, 223, 30, 16);
+    }
+
+    void Erase()
+    { 
+        gotoxy(x, y);     printf("     ");
+        gotoxy(x, y + 1); printf("     ");
+        gotoxy(x, y + 2); printf("     ");
+    }
+    void Damage()
+    { 
+        shield--;
+        if (shield == 0)
+        {
+            Explosion();
+        }
+        else
+        {
+            Erase(); 
+            gotoxy(x, y);     printf("  *  ");
+            gotoxy(x, y + 1); printf("  *  ");
+            gotoxy(x, y + 2); printf("*****");
+            Sleep(100);
+        }
+    }
+    void Explosion()
+    { 
+        hp--;
+        Erase();
+        gotoxy(x, y);     printf("  *  ");
+        gotoxy(x, y + 1); printf("  *  ");
+        gotoxy(x, y + 2); printf("*****");
+        Sleep(100);
+        Erase();
+        gotoxy(x, y);     printf(" * * ");
+        gotoxy(x, y + 1); printf("* * *");
+        gotoxy(x, y + 2); printf(" * * ");
+        Sleep(100);
+        Erase();
+        gotoxy(x, y);     printf("*   *");
+        gotoxy(x, y + 1); printf(" * * ");
+        gotoxy(x, y + 2); printf("* * *");
+        Sleep(100);
+        if (hp > 0)
+        { 
+            shield = 3;
+        }
+        else
+        { 
+            imDead = true;
+        }
+    }
+    void Move()
+    { 
+        if (kbhit())
+        { 
+            Erase(); 
+            char key = getch(); 
+            switch (key)
+            { 
+            case LEFT:  if (x > 2)      x -= 2; break;
+            case RIGHT: if (x + 4 < 77) x += 2; break;
+            case UP:    if (y > 3)      y -= 1; break;
+            case DOWN:  if (y + 2 < 22) y += 1; break;
+            }
+        }
+        Draw(); 
+    }
+
+};
+class Asteroid
+{
+private:
+    int x;
+    int y;
+public:
+    int X() { return x; }
+    int Y() { return y; }
+
+    Asteroid(int _x, int _y)
+    {
+        x = _x;
+        y = _y;
+    }
+    void Draw()
+    {
+        gotoxy(x, y); printf("*"); 
+    }
+    void Collision(SpaceShip& ss) 
+    {
+        if (((x >= ss.X()) && (x <= ss.X() + 5)) && ((y >= ss.Y()) && (y <= ss.Y() + 2)))
+        { 
+            ss.Damage(); 
+            gotoxy(x, y); printf(" "); 
+            x = rand() % 74 + 3; 
+            y = 4;
+        }
+        else
+        {
+            gotoxy(x, y); printf(" ");
+            y++;
+            if (y > 22)
+            { 
+                x = rand() % 74 + 3; 
+                y = 4;
+            }
+            Draw();
+        }
+    }
+};
+struct Player {
+    string name;
+    int score;
+
+    bool operator<(const Player& other) const {
+        return score > other.score;
+    }
+};
+int main()
+{
+    bool flag = true;
+    HideCursor();
+    WelcomeMessage();
+    getch(); system("cls");
+    DrawGameLimits();
+
+    list<Asteroid*> Asteroids; 
+    list<Asteroid*>::iterator asteroid;
+
+    for (int i = 0; i < 10; i++) 
+    {
+        Asteroids.push_back(new Asteroid(rand() % 78 + 1, rand() % 4 + 3));
+    }
+    SpaceShip ss = SpaceShip(40, 20); 
+    int score = 0;
+    int hp = 0;
+    thread incrementThread(incrementValue, ref(score),ref(flag));
+   
+    while (!ss.isDead() && score != 61) 
+    {
+
+        for (asteroid = Asteroids.begin(); asteroid != Asteroids.end(); asteroid++)
+        { 
+            (*asteroid)->Collision(ss);
+        }
+
+        ss.Move();
+        gotoxy(56, 1); printf("%d", score);
+        Sleep(60); 
+    }
+    flag = false;
+    int currentHP = ss.HP();
+    int currentShield = ss.Shield();
+    
+    if (!ss.isDead())
+    { 
+        if (currentHP == 3) {
+            if (currentShield == 3) {
+                score += 75;
+            }
+            if (currentShield == 2) {
+                score += 70;
+            }
+            if (currentShield == 1) {
+                score += 65;
+            }
+        }
+        if (currentHP == 2) {
+            if (currentShield == 3) {
+                score += 50;
+            }
+            if (currentShield == 2) {
+                score += 45;
+            }
+            if (currentShield == 1) {
+                score += 40;
+            }
+        }
+        if (currentHP == 1) {
+            if (currentShield == 3) {
+                score += 25;
+            }
+            if (currentShield == 2) {
+                score += 20;
+            }
+            if (currentShield == 1) {
+                score += 15;
+            }
+        }
+        GameOverVictoryMessage(score);
+    }
+    else
+    { 
+        GameOverDefeatMessage(score);
+    }
+    Sleep(4000); system("cls");TRHideCursor();
+    vector<Player> players;
+    ifstream file("leaderboard.txt");
+    if (file.is_open()) {
+        string name;
+        int score;
+        while (file >> name >> score) {
+            players.push_back({ name, score });
+        }
+        file.close();
+    }
+    string playerName;
+    gotoxy(30, 13);
+    cout << "Enter your name: ";
+    cin >> playerName;
+    players.push_back({ playerName, score }); 
+    sort(players.begin(), players.end());
+
+    ofstream outFile;
+    outFile.open("leaderboard.txt");
+    for (const auto& player : players) {
+        addPlayer(outFile, player);
+    }
+    outFile.close(); system("cls");
+    HideCursor();
+    SpecialMessage();
+    Sleep(500000);;
+    return 0;
+}
